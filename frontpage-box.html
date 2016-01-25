@@ -1,7 +1,4 @@
-
-<link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../mediator-data/mediator-data.html">
-
 <!--
 An element providing a solution to no problem in particular.
 
@@ -29,7 +26,7 @@ Example:
         margin: 0px;
       }
     </style>
-    <mediator-data data="{{data}}" as-array="{{boxes}}" location="https://eh-frontpage.firebaseio.com/frontpage" folder="boxes"></mediator-data>
+    <mediator-data data="{{data}}" as-array="{{boxes}}" location="{{location}}" folder="boxes"></mediator-data>
     <div id="boxdone" horizontal layout>
       <template is="dom-repeat" items="{{boxes}}">
         <a href="{{item.url}}">
@@ -46,12 +43,10 @@ Example:
 
   </template>
   <script>
-    (function() {
-      'use strict';
-
+    ;(function() {
+      'use strict'
       Polymer({
         is: 'frontpage-box',
-
         properties: {
           _boxing: {
             type: Object,
@@ -59,19 +54,21 @@ Example:
           },
           boxes: {
             value: []
+          },
+          location: {
+            value:"https://eh-frontpage.firebaseio.com/frontpage"
           }
         },
-
         _add: function() {
-          this.push('boxes', this._boxing);
+          this.push('boxes', this._boxing)
         },
         _cancel: function() {
-          this.set('_boxing', {});
+          this.set('_boxing', {})
         },
         _addp (val){
-          return 'height: 300px; float:left; margin: 10px; width:' + val + '%';
+          return 'height: 300px; float:left; margin: 10px; width:' + val + '%'
         }
-      });
-    })();
+      })
+    })
   </script>
 </dom-module>
