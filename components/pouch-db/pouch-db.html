@@ -1,0 +1,79 @@
+<link rel="import" href="../polymer/polymer.html">
+<script src="../pouchdb/dist/pouchdb.min.js"></script>
+<script>
+/**
+ * `<pouch-db>` 
+ * @demo demo.html 
+ *
+ **/
+  window.PouchDB = PouchDB
+  
+  Polymer({
+    is: "pouch-db",
+    properties: {
+      name: {type:String,value:"data"},
+      saved: {notify:true,computed:"debounceSaveData(name, data)"},
+      savedData: {notify:true},
+      loaded: {computed:"load(name)"}
+    },
+    load: function(name) {
+      var db = new PouchDB(hash(name))
+      var that = this
+      db.get(hash(name)).then(function(doc) {
+        console.log("doc.data",doc.data)
+        that.savedData = doc.data
+      })
+      return true
+    },
+    debounceSaveData: function(name, data) {
+      this.cancelDebouncer("save")
+      this.debounce("save", this.saveData(name, data), 10000)
+      return true;
+    },
+    saveData: function(name, data) {
+      var theSavedData
+      var db = new PouchDB(hash(name))
+      db.get(hash(name)).then(function(doc) {
+        console.log("doc.data",doc.data)
+        theSavedData = doc.data
+        return db.put({
+          _id: hash(name),
+          _rev: doc._rev,
+          data: data
+        });
+      }).then(function(response) {
+        console.log("response",response)
+        // handle response
+      }).catch(function (err) {
+        if (err.name === "conflict") {
+          db.put({
+            _id: hash(name),
+            data: data
+          }).then(function (response) {
+            console.log("response 2",response)
+          }).catch(function (err) {
+            console.log("err 2",err)
+          })
+        } else {
+          console.log("err",err)
+        }
+      })
+      return theSavedData
+    }
+  });
+  function hash(message) {
+    var hash = 0
+    if (message.length == 0) return hash
+    for (i = 0;i < message.length;i++) {
+      var char = message.charCodeAt(i)
+      hash = ((hash<<5)-hash)+char
+      hash = hash & hash // Convert to 32bit integer
+    }
+    return hex32(hash);
+  }
+  function hex32(val) {
+    val &= 0xFFFFFFFF;
+    var hex = val.toString(16).toUpperCase();
+    return ("00000000" + hex).slice(-8);
+  }
+</script>

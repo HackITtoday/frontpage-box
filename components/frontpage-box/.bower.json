@@ -1,0 +1,38 @@
+{
+  "name": "frontpage-box",
+  "authors": [
+    "Anonymous <anonymous@example.com>"
+  ],
+  "description": "An element providing a solution to no problem in particular.",
+  "keywords": [
+    "web-component",
+    "polymer",
+    "seed"
+  ],
+  "main": "frontpage-box.html",
+  "license": "http://polymer.github.io/LICENSE.txt",
+  "homepage": "https://github.com/<USERNAME>/seed-element/",
+  "ignore": [
+    "/.*",
+    "/test/"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.1.0",
+    "mediator-data": "marcus7777/mediator-data",
+    "iron-image": "PolymerElements/iron-image#~1.2.1"
+  },
+  "devDependencies": {
+    "iron-component-page": "PolymerElements/iron-component-page#^1.0.0",
+    "web-component-tester": "*"
+  },
+  "_release": "5a5ec6a5db",
+  "_resolution": {
+    "type": "branch",
+    "branch": "master",
+    "commit": "5a5ec6a5db9e0f67d087638ddbb007fab843d699"
+  },
+  "_source": "git://github.com/HackITtoday/frontpage-box.git",
+  "_target": "master",
+  "_originalSource": "HackITtoday/frontpage-box",
+  "_direct": true
+}

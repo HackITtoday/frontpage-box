@@ -1,0 +1,325 @@
+<link rel="import" href="../pouch-db/pouch-db.html">
+<link rel="import" href="../iron-ajax/iron-ajax.html">
+<!--
+`<mediator-data location="https://mediator-data.firebaseio-demo.com" data="{{data}}" folder="{{folder}}"></mediator-data>` 
+@demo demo.html todo and badges
+@demo badges.demo.html badges
+-->
+
+<dom-module id="mediator-data">
+  <template>
+    <iron-ajax auto url="{{dataUrl}}" last-response="{{dataAll}}"></iron-ajax>
+    <iron-ajax id="set" method="PUT" url="{{setDataUrl}}" ></iron-ajax>
+    <pouch-db name="{{dataUrl}}" data="{{dataAll}}" saved-data="{{savedData}}"></pouch-db>
+  </template>
+</dom-module>
+<script>
+;(function () {
+  Polymer({
+    is: 'mediator-data',
+    properties: {
+      dataUrl: {computed:'getDataUrl(location)'},
+      setDataUrl: {computed:'getSetDataUrl(location, _folder)'},
+      location: {type: String},
+      defaultFolder: {type: String, value: 'default'},
+      folder: {type: String, value: 'data'},
+      data: {notify: true},
+      dataAll: {notify: true},
+      asArray: {notify: true, value: []},
+      editDefault:{type: Boolean, value: false},
+      sync: {value: [], type: Array},
+      _folder: {computed:'get_folder(editDefault, defaultFolder, folder)'},
+      overWrite: {value:false, type: Boolean}
+    },
+    observers: [
+      "load(dataAll.*, _folder, defaultFolder, sync, overWrite)",
+      "setData(dataAll.*, _folder)",
+      "syncDataAll(data.*)",
+      "syncAsArray(data.*)",
+      "syncData(asArray.*, _folder)",
+      "dataAllTest(dataAll)",
+      "localLoad(savedData)"
+    ],
+    localLoad: function(savedData) {
+      console.log("savedData",savedData)
+      if (!this.dataAll) {
+        this.set("dataAll", savedData)
+      }
+    },
+    syncDataAll: function(data) {
+      var obj = this._folder.split('/')
+      // alert(obj)
+      if (obj.length !== 1 && !this.dataAll.hasOwnProperty(obj[0])) {
+        this.dataAll[obj[0]] = {}
+      }
+      if (obj.length > 1) {
+        if (obj.length === 2) {
+          this.dataAll[obj[0]][obj[1]] = data.base
+        } else if (!this.dataAll[obj[0]][obj[1]]) {
+          this.dataAll[obj[0]][obj[1]] = {}
+        }
+        if (obj.length > 2) {
+          if (obj.length === 3) {
+            this.dataAll[obj[0]][obj[1]][obj[2]] = data.base
+          } else if (!this.dataAll[obj[0]][obj[1]][obj[2]]) {
+            this.dataAll[obj[0]][obj[1]][obj[2]] = {}
+          }
+        }
+      }
+      
+      // TODO make work a.b.c.d
+      this.set('dataAll.'+this._folder.replace('/','.'), data.base)
+    },
+    syncAsArray: function(data) {
+      var asA = objectToArray(data.base)
+      if (this.asArray !== asA) {
+        this.asArray = asA
+      }
+    },
+    syncData: function(asArray, folder) {
+      if (asArray.path.indexOf('asArray.#') !== -1) {
+        if (!this.data) this.data = {}
+        var keys = Object.keys(this.data)
+        var re = /(?:asArray\.#)([0-9]*)/; 
+        var key = re.exec(asArray.path)[1] * 1
+        var re2 = /(?:asArray\.#)(?:[0-9]*)\.(.*)/;
+        var innerKey = ''
+        if (re2.test(asArray.path)) {
+          innerKey = '.'+re2.exec(asArray.path)[1]
+        }
+        if (this.asArray.hasOwnProperty(key)) {
+          this.set('dataAll.'+folder.replace('/','.')+'.'+keys[key]+innerKey, asArray.value)
+          if (!this.get('dataAll.'+folder.replace('/','.'), this)) {
+            this.set('dataAll.'+folder.replace('/','.'), {})
+          }
+          this.set('data.'+keys[key]+innerKey, asArray.value)
+        } else {
+          console.log("del it todo")
+        }
+      } else if (asArray.path === 'asArray.splices') {
+        if (asArray.value.keySplices[0].added.length === 0) {
+          var del = asArray.value.indexSplices[0].index
+          if (typeof del === 'number') {
+           var data = this.data
+            var keys = Object.keys(data)
+            if (delete(data[keys[del]]) !== 0) {
+              this.set("data",data)
+              this.set("dataAll."+folder.replace('/','.'),data)
+              this.setData({},folder)
+            }
+          }
+        } else {
+          this.push(asArray.base.pop())
+        }
+      } else if (asArray.path === 'asArray' && this.data) {
+        /* TODO 
+        var data = this.data
+        var keys = Object.keys(data)
+        var oldNum = keys.length
+        var newNum = asArray.base.length
+        
+        if (oldNum < newNum) { // adding
+          for (var i = 0; i < asArray.base.length; i++) {
+            if (asArray.base[i] !== data[keys[i]]) {
+              asArray.base[i] !== data[keys[i]]
+            }
+          }
+               
+          var data = this.data
+          var keys = Object.keys(data)
+          this.set("data",data)
+          this.set("dataAll."+folder.replace('/','.'),data)
+          this.setData({},folder)
+        } */
+      } else if (asArray.path === "asArray.length") {
+        
+      }
+    },
+    load: function (dataAll, folder, defaultFolder, sync, overWrite) {
+      if (dataAll.base !== null && Object.keys(dataAll.base).length > 0 && folder !== "" ) {
+        
+        var data = this.get('dataAll.'+folder.replace('/','.'), this) || this.get('dataAll.'+defaultFolder.replace('/','.'), this)
+          
+        if (data !== this.data) {
+          if (Object.keys(data).length < 1) {
+            this.data = this.get('dataAll.'+defaultFolder.replace('/','.'), this)
+            this.set('dataAll.'+folder.replace('/','.'), this.data)
+          } else if ( sync.length !== 0) {
+            if (defaultFolder === "." ) {
+              if (overWrite) {
+                this.data = overWriteData(data,this.get('dataAll', this), sync)
+              } 
+              this.data = addUniques(data,this.get('dataAll', this), sync)
+            } else {
+              if (overWrite) {
+                this.data = overWriteData(data, this.get('dataAll.' + defaultFolder.replace('/','.'), this), sync)
+              } 
+              this.data = addUniques(data, this.get('dataAll.' + defaultFolder.replace('/','.'), this), sync)
+            }
+          } else {
+            this.data = data
+          }
+          if (this.get('dataAll.'+folder.replace('/','.'), this) !== this.data) {
+            this.set('dataAll.'+folder.replace('/','.'), this.data)
+          }
+          var asArray = objectToArray(this.data)
+          if (asArray !== this.asArray) {
+            this.asArray = asArray
+          }
+        }
+      }
+    },
+    getDataUrl: function(location){
+      if (location.substring(location.length - 1) === '/') {
+        location = location.substring(0,location.length - 1)
+      }
+      if (location.indexOf("firebase")) {
+        return location + "/.json"
+      } else {
+        return location
+      }
+    },
+    get_folder(editDefault, defaultFolder, folder){
+      if (editDefault) {
+        return defaultFolder
+      } else {
+        return folder
+      }
+    },
+    getData: function(dataAll, folder){
+      if (dataAll) {
+        if (folder === '') {
+          return dataAll
+        } else {
+          if (dataAll.hasOwnProperty(folder)) {
+            return dataAll[folder]
+          } else {
+            return {}
+          }
+        }
+      } else {
+        return {}
+      }
+    },
+    setData: function(dataAll,folder){
+      data = JSON.stringify(this.get('dataAll.'+folder.replace('/','.'), this))
+      if (performance.now() > 30000) {// setting data after 30 secs
+        if (data) { 
+          this.$.set.headers = {'content-type':'application/json'}
+          this.$.set.body = data
+          this.$.set.generateRequest()
+        } else {
+          if (this.data) { // todo look at
+            this.$.set.headers = {'content-type':'application/json'}
+            this.$.set.body = this.data
+            this.$.set.generateRequest()
+          }
+        }
+      }
+    },
+    getSetDataUrl: function(location,folder) {
+      if (location.substring(location.length - 1) === '/') {
+        location = location.substring(0,location.length - 1)
+      }
+      if (location.indexOf("firebase")) {
+        if (folder === '') {
+          return location + "/.json"
+        } else {
+          return location + "/" + folder + "/.json"
+        }
+      } else {
+        return location + "/" + folder
+      }
+    },
+    /** Add New Object to the folder */ 
+    push: function(obj){
+      var data = this.data
+      var folder = this._folder
+      
+      if (data) {
+        var num = Object.keys(data).length + 1
+        var key
+      
+        if (('' + num).length === 1) {
+          key = '00' + num
+        } else if (('' + num).length === 2) {
+          key = '0' + num
+        } 
+        
+        if (!this.data.hasOwnProperty(key)) {
+          this.set("data."+key, obj)
+        } else {
+          data[key+"-"+Math.floor(Math.random()*1000)] = obj
+        }
+      } else {
+        data = {"001": obj}
+      }
+      this.set("data",data)
+      this.set("dataAll."+folder.replace('/','.'),data)
+      this.setData({},folder)
+    },
+    dataAllTest: function(dataAll) {
+      if (!this.dataAll) {
+        this.dataAll = {}
+      }
+    }
+  })
+  
+  function addUniques(data, _default, sync, overWrite) {
+    var output = data
+    var key 
+    if (_default) {
+      var keys = Object.keys(data)
+      var defaultKeys = Object.keys(_default)
+      for (var i = 0; i < defaultKeys.length; i++) {
+        key = defaultKeys[i] 
+        if (keys.indexOf(key) === -1) {
+          for (var s = 0; s < sync.length; s++) {
+            output[key] = {}
+            output[key][sync[s]] = _default[key][sync[s]]
+          }
+        }
+      }
+    }
+    return output
+  }
+  function overWriteData (data, _default, sync, overWrite) {
+    var output = data
+    var key 
+    if (_default) {
+      var keys = Object.keys(data)
+      var defaultKeys = Object.keys(_default)
+      for (var i = 0; i < defaultKeys.length; i++) {
+        key = defaultKeys[i] 
+        if (keys.indexOf(key) !== -1) {
+          for (var s = 0; s < sync.length; s++) {
+            if (_default[key][sync[s]]) {
+              if (output[key]) {
+                output[key][sync[s]] = _default[key][sync[s]]
+              } else {
+                output[key] = {}
+                output[key][sync[s]] = _default[key][sync[s]]
+              }
+            }
+          }
+        }
+      }
+    }
+    return output
+  }
+  function objectToArray(data) {
+    var output = []
+    if (data) {
+      var keys = Object.keys(data)
+      for (var i = 0; i < keys.length; i++) {
+      //  if ((typeof data[keys[i]] === "object") && (data[keys[i]] !== null)) {
+      //    data[keys[i]]._key = keys[i]
+      //  }
+        output.push(data[keys[i]])
+      }
+    }
+    return output
+  }
+  
+})()
+</script>
