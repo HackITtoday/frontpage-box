@@ -68,10 +68,8 @@ Example:
         _addp: function(val){
           return 'height: 300px; float:left; margin: 10px; width:' + val + '%'
         },
-        sortItems: function(){
-          return function(a, b){
-            return a.order > b.order
-          }
+        sortItems: function(a, b){
+          return a.order > b.order
         }
       })
   </script>
