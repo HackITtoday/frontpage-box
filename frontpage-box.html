@@ -69,7 +69,7 @@ Example:
           return 'height: 300px; float:left; margin: 10px; width:' + val + '%'
         },
         sortItems: function(a, b){
-          return a.order > b.order
+          return +a.order > +b.order
         }
       })
   </script>
